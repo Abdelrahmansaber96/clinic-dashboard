@@ -1,9 +1,10 @@
 const Booking = require('../models/Booking');
-const Customer = require('../models/Customer');
+const Customer = require('../models/customer');
 const { asyncHandler } = require('../utils/AppError');
 const { sendSuccess, sendError, sendNotFound } = require('../utils/helpers');
 const { Pagination } = require('../utils/pagination');
 const APIFilters = require('../utils/filters');
+const { sendNotificationToCustomer } = require('../services/push-notification-service');
 
 // @desc    Get all bookings
 // @route   GET /api/bookings
@@ -141,6 +142,21 @@ const createBooking = asyncHandler(async (req, res) => {
     { path: 'createdBy', select: 'name' }
   ]);
 
+  // Send push notification to customer
+  try {
+    await sendNotificationToCustomer(req.body.customer, {
+      title: '✅ تم إنشاء الحجز',
+      body: `حجز جديد لـ ${booking.animal.type || 'الحيوان'}`,
+      bookingId: booking._id.toString(),
+      status: booking.status,
+      appointmentDate: booking.appointmentDate,
+      appointmentTime: booking.appointmentTime
+    });
+  } catch (error) {
+    // Log notification error but don't fail the booking creation
+    console.error('Notification error:', error.message);
+  }
+
   sendSuccess(res, booking, 'Booking created successfully', 201);
 });
 
@@ -263,6 +279,41 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
     { path: 'branch', select: 'name code city' },
     { path: 'doctor', select: 'name specialization' }
   ]);
+
+  // Send push notification to customer based on status
+  try {
+    let notificationTitle = '';
+    let notificationBody = '';
+
+    switch (status) {
+      case 'confirmed':
+        notificationTitle = '✅ تم تأكيد الحجز';
+        notificationBody = `تم تأكيد حجزك في ${booking.branch.name || 'الفرع'}`;
+        break;
+      case 'completed':
+        notificationTitle = '🎉 تم إكمال الحجز';
+        notificationBody = 'شكراً لك، تم إكمال خدمتك بنجاح';
+        break;
+      case 'cancelled':
+        notificationTitle = '❌ تم إلغاء الحجز';
+        notificationBody = cancelReason ? `السبب: ${cancelReason}` : 'تم إلغاء حجزك';
+        break;
+    }
+
+    if (notificationTitle) {
+      await sendNotificationToCustomer(booking.customer._id.toString(), {
+        title: notificationTitle,
+        body: notificationBody,
+        bookingId: booking._id.toString(),
+        status: booking.status,
+        appointmentDate: booking.appointmentDate,
+        appointmentTime: booking.appointmentTime
+      });
+    }
+  } catch (error) {
+    // Log notification error but don't fail the status update
+    console.error('Notification error:', error.message);
+  }
 
   sendSuccess(res, booking, `Booking ${status} successfully`);
 });

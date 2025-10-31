@@ -10,7 +10,9 @@ const {
   addAnimal,
   updateAnimal,
   deleteAnimal,
-  getCustomerStats
+  getCustomerStats,
+  saveDeviceToken,
+  removeDeviceToken
 } = require('../controllers/customerController');
 const auth = require('../middlewares/auth');
 const { authorize, checkActionPermission } = require('../middlewares/authorize');
@@ -43,5 +45,9 @@ router.patch('/:id/activate', checkActionPermission('update', 'customer'), activ
 router.post('/:id/animals', checkActionPermission('update', 'customer'), addAnimal);
 router.put('/:id/animals/:animalId', checkActionPermission('update', 'customer'), updateAnimal);
 router.delete('/:id/animals/:animalId', checkActionPermission('update', 'customer'), deleteAnimal);
+
+// Device token management (for push notifications)
+router.post('/device-token/save', saveDeviceToken);
+router.post('/device-token/remove', removeDeviceToken);
 
 module.exports = router;

@@ -11,6 +11,10 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# Firebase Service Account (security critical!)
+config/findoctor-firebase-adminsdk.json
+config/*firebase*.json
+
 # Logs
 logs
 *.log

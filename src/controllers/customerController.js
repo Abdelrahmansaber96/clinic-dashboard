@@ -1,4 +1,4 @@
-﻿const Customer = require('../models/Customer');
+﻿const Customer = require('../models/customer');
 const Booking = require('../models/Booking');
 const { asyncHandler } = require('../utils/AppError');
 const { sendSuccess, sendError, sendNotFound } = require('../utils/helpers');
@@ -122,6 +122,55 @@ const getCustomerStats = asyncHandler(async (req, res) => {
   sendSuccess(res, { totalCustomers, activeCustomers }, 'Customer statistics fetched successfully');
 });
 
+const saveDeviceToken = asyncHandler(async (req, res) => {
+  const { customerId, deviceToken } = req.body;
+
+  if (!customerId || !deviceToken) {
+    return sendError(res, 'Customer ID and device token are required', 400);
+  }
+
+  const customer = await Customer.findById(customerId);
+  if (!customer) {
+    return sendNotFound(res, 'Customer');
+  }
+
+  // Add device token if not already exists
+  if (!customer.deviceTokens.includes(deviceToken)) {
+    customer.deviceTokens.push(deviceToken);
+    await customer.save();
+  }
+
+  sendSuccess(res, { 
+    customerId: customer._id,
+    deviceTokenCount: customer.deviceTokens.length,
+    message: 'Device token saved successfully'
+  }, 'Device token saved successfully');
+});
+
+const removeDeviceToken = asyncHandler(async (req, res) => {
+  const { customerId, deviceToken } = req.body;
+
+  if (!customerId || !deviceToken) {
+    return sendError(res, 'Customer ID and device token are required', 400);
+  }
+
+  const customer = await Customer.findByIdAndUpdate(
+    customerId,
+    { $pull: { deviceTokens: deviceToken } },
+    { new: true }
+  );
+
+  if (!customer) {
+    return sendNotFound(res, 'Customer');
+  }
+
+  sendSuccess(res, {
+    customerId: customer._id,
+    deviceTokenCount: customer.deviceTokens.length,
+    message: 'Device token removed successfully'
+  }, 'Device token removed successfully');
+});
+
 module.exports = {
   getCustomers,
   getCustomer,
@@ -133,5 +182,7 @@ module.exports = {
   addAnimal,
   updateAnimal,
   deleteAnimal,
-  getCustomerStats
+  getCustomerStats,
+  saveDeviceToken,
+  removeDeviceToken
 };
